@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Game Interface</title>
+    <link rel="stylesheet" href="https://unpkg.com/chessboardjs@1.0.0/chessboard-1.0.0.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="board" style="width: 400px"></div>
+    <button onclick="startNewGame()">Start Game</button>
+    <button onclick="resetGame()">Reset</button>
+    <button onclick="undoMove()">Undo Move</button>
+    <div id="status"></div>
+    <div id="evaluation"></div>
+    <div id="moves"></div>
+
+    <!-- jQuery and Chessboard.js libraries -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://unpkg.com/chessboardjs@1.0.0/chessboard-1.0.0.min.js"></script>
+    <script src="https://unpkg.com/chess.js"></script>
+    <!-- Link to your JavaScript file -->
+    <script src="app.js"></script>
+</body>
+</html>
