@@ -1,0 +1,2 @@
+https://github.com/mominalix/Python-GUI-Chess-Game-Analysis-with-Stockfish
+https://github.com/mptedesco/python-chess-analysis/blob/master/python%20chess%20analysis%20code%20v%2005.ipynb
