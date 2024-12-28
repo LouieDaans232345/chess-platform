@@ -1,0 +1,9 @@
+[Event "Stockfish vs Stockfish"]
+[Site "Local Computer"]
+[Date "2024.11.04"]
+[Round "1"]
+[White "Stockfish"]
+[Black "Stockfish"]
+[Result "0-1"]
+
+1. d4 d5 2. c4 dxc4 3. e4 e6 4. Be2 c5 5. Nf3 Be7 6. d5 exd5 7. exd5 Nf6 8. Bxc4 O-O 9. O-O Bd6 10. h3 h6 11. Re1 Nbd7 12. Bd2 Re8 13. a4 a6 14. Rxe8+ Qxe8 15. Na3 Ne5 16. Bc3 Bf5 17. Bb3 Nxf3+ 18. Qxf3 Be4 19. Qd1 Rd8 20. Bxf6 gxf6 21. Qg4+ Kh8 22. Bc2 Bxc2 23. Nxc2 Qe5 24. g3 Rg8 25. Qc4 b5 26. Qd3 c4 27. Qe3 Kh7 28. axb5 axb5 29. Qxe5 Bxe5 30. Ra6 Rd8 31. Nb4 Bxb2 32. Rb6 Bc3 33. Rxb5 Ra8 34. Nc6 Be5 35. Rc5 Ra2 36. Kg2 Ra4 37. Ra5 Rxa5 38. Nxa5 c3 39. Kf1 f5 40. f4 Bd4 41. Nb3 Ba7 42. Ke2 Kg6 43. Kd3 Bf2 44. Nc1 Bxg3 45. Ke3 Bh4 46. d6 Kf6 47. Kd4 c2 48. d7 Ke6 49. Ne2 Kd6 50. Kc4 Kxd7 51. Kc3 Be1+ 52. Kb3 c1=Q 53. Nxc1 Bf2 54. Kb4 Be3 55. Nb3 Kc6 56. Kc3 Kd5 57. Kd3 Bxf4 58. Ke2 Bg5 59. Kf2 Kc4 60. Na5+ Kd5 61. Nb3 Ke4 62. Nc5+ Kd4 63. Nb3+ Ke4 64. Nc5+ Kf4 65. Nd3+ Ke4 66. Nc5+ Kd5 67. Nb3 Kc4 68. Na5+ Kd4 69. Nb3+ Kc4 70. Na5+ Kd4 71. Kf3 Kd5 72. Nb7 Bd2 73. Ke2 Bf4 74. Na5 Ke4 75. Nc4 h5 76. Kf2 f6 77. Kg2 Bc1 78. Kf1 Kf3 79. Nd6 f4 80. Ne8 Bb2 81. Ng7 Bd4 82. Nf5 Ke4 83. Nd6+ Kd5 84. Ne8 Ke4 85. Ng7 f5 86. Ne6 Bf6 87. Kf2 Bd4+ 88. Kg2 Bf6 89. Nf8 Ke3 90. Ng6 h4 91. Kf1 Kf3 92. Nf8 Kg3 93. Nd7 Bd4 94. Nf8 f3 95. Ne6 Ba7 96. Ng5 Bb6 97. Nf7 Kxh3 98. Nh6 Kg3 99. Nxf5+ Kg4 100. Nxh4 Kxh4 101. Ke1 Bc5 102. Kd1 Ba7 103. Kc2 Kh3 104. Kb1 Kh2 105. Kc2 Kg3 106. Kd3 Kf4 107. Kd2 Be3+ 108. Kd1 Kg3 109. Ke1 Kg2 110. Kd1 f2 111. Ke2 Bc1 112. Kd3 Bb2 113. Kc4 f1=Q+ 114. Kb4 Qa6 115. Kc5 Ba3+ 116. Kd5 Qd6+ 117. Kc4 Qb4+ 118. Kd5 Qc5+ 119. Ke6 Qd6+ 120. Kf5 Kf3 121. Kg5 Qe5+ 122. Kh4 Qa5 123. Kh3 Qd2 124. Kh4 Bc1 125. Kh3 Qg5 126. Kh2 Bf4+ 127. Kh1 Qg2# 0-1

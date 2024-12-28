@@ -1,0 +1,9 @@
+[Event "Human vs Stockfish"]
+[Site "Local Computer"]
+[Date "2024.11.04"]
+[Round "?"]
+[White "Human"]
+[Black "Stockfish"]
+[Result "*"]
+
+1. d4 d5 2. Bf4 Nf6 3. e3 e6 4. Nf3 c5 5. c3 Qb6 6. Qc2 Bd6 7. Ne5 Nh5 8. Bg3 cxd4 9. cxd4 O-O 10. Bd3 g6 11. Nd2 Na6 12. Bxa6 Qxa6 13. Nb3 b6 14. Qc6 Bb4+ 15. Nd2 Nxg3 16. hxg3 Bb7 17. Qc2 Rac8 18. Qb3 Qb5 19. a4 Bxd2+ 20. Kxd2 Qxb3 *

@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Game Analyzer</title>
+    
+    <!-- External CSS and JavaScript dependencies -->
+    <link rel="stylesheet" href="/static/css/chessboard-1.0.0.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='js/chessboard-1.0.0.min.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+
+    <style>
+        /* CSS Variables for consistent theming */
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #3498db;
+            --text-color: #ecf0f1;
+            --border-radius: 5px;
+        }
+
+        /* Global styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--primary-color);
+            color: var(--text-color);
+        }
+
+        /* Main container layout */
+        #container {
+            display: grid;
+            grid-template-columns: auto 300px;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Chess board styling */
+        #board {
+            width: 500px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* File upload section */
+        #upload-form {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* Analysis panel styling */
+        #info-panel {
+            background-color: var(--secondary-color);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Button styling */
+        .button {
+            background-color: var(--accent-color);
+            color: var(--text-color);
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .button:hover {
+            background-color: #2980b9;
+        }
+
+        .button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        /* Input styling */
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Navigation controls */
+        #navigation {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        #navigation button {
+            min-width: 120px;
+        }
+
+        /* Optimization for chess pieces to prevent flickering */
+        .chess-piece {
+            will-change: transform;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chess Game Analyzer</h1>
+    
+    <form id="upload-form">
+        <input type="file" id="pgn-file" accept=".pgn" />
+        <label for="pgn-file" class="button">Choose PGN File</label>
+        <button type="submit" class="button">Upload PGN</button>
+    </form>
+
+    <div id="container">
+        <div id="board-container">
+            <div id="board"></div>
+            <div id="navigation">
+                <button id="prev-move" class="button" disabled>Previous Move</button>
+                <button id="next-move" class="button" disabled>Next Move</button>
+                <button id="return-pgn" class="button" style="display: none;">Return to PGN</button>
+            </div>
+        </div>
+
+        <div id="info-panel">
+            <div id="evaluation">
+                Evaluation: <span id="score">0.0</span>
+            </div>
+            <div id="evaluation-bar">
+                <div id="eval-fill"></div>
+            </div>
+            <div id="top-moves">
+                <h3>Best Moves:</h3>
+                <ul id="top-moves-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Main chess game class that handles all game logic and UI interactions
+         */
+        class ChessGame {
+            constructor() {
+                // Initialize core components
+                this.game = new Chess();  // chess.js instance for game logic
+                this.board = null;        // chessboard.js instance for UI
+                this.currentMoveIndex = 0;  // Current position in the game
+                this.moveHistory = [];    // Stores all moves and their analysis
+                this.pgnMoves = [];       // Stores original PGN moves
+                this.lastPgnIndex = -1;   // Last position in PGN analysis
+                this.initializeBoard();
+                this.initializeNavigation();
+            }
+
+            /**
+             * Initializes the chessboard UI with configuration
+             */
+            initializeBoard() {
+                const config = {
+                    position: 'start',
+                    pieceTheme: '/static/img/chesspieces/wikipedia/{piece}.png',
+                    draggable: true,
+                    moveSpeed: 200,        // Animation speed for moves
+                    snapbackSpeed: 200,    // Speed when piece snaps back
+                    snapSpeed: 200,        // Speed when piece snaps to square
+                    onDragStart: this.onDragStart.bind(this),
+                    onDrop: this.onDrop.bind(this),
+                    onSnapEnd: this.onSnapEnd.bind(this),
+                    onMoveEnd: () => {
+                        // Add optimization class to prevent flickering
+                        $('.piece-417db').addClass('chess-piece');
+                    }
+                };
+                this.board = ChessBoard('board', config);
+
+                // Add optimization class to initial pieces
+                setTimeout(() => {
+                    $('.piece-417db').addClass('chess-piece');
+                }, 100);
+            }
+
+            /**
+             * Sets up event listeners for navigation buttons
+             */
+            initializeNavigation() {
+                document.getElementById('prev-move').addEventListener('click', () => this.previousMove());
+                document.getElementById('next-move').addEventListener('click', () => this.nextMove());
+                document.getElementById('return-pgn').addEventListener('click', () => this.returnToPgn());
+                
+                // Set up PGN file upload handler
+                document.getElementById('upload-form').addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    const file = document.getElementById('pgn-file').files[0];
+                    
+                    if (!file) return;
+                    
+                    const formData = new FormData();
+                    formData.append('pgn', file);
+                    
+                    await this.loadGameHistory(formData);
+                });
+            }
+
+            /**
+             * Converts numeric square index (0-63) to algebraic notation (e.g., "e4")
+             */
+            squareToAlgebraic(square) {
+                const file = square % 8;
+                const rank = Math.floor(square / 8);
+                return String.fromCharCode(97 + file) + (rank + 1);
+            }
+
+            /**
+             * Handles the start of piece drag
+             * Only allows dragging if it's a legal move
+             */
+            onDragStart(source, piece) {
+                if (this.game.game_over()) return false;
+                if (piece === false) return false;
+                return true;
+            }
+
+            /**
+             * Handles piece drop and makes a move
+             */
+            onDrop(source, target) {
+                const move = this.game.move({
+                    from: source,
+                    to: target,
+                    promotion: 'q'
+                });
+
+                if (move === null) return 'snapback';
+
+                // Store move in history
+                this.currentMoveIndex++;
+                // Remove any future moves if we're in the middle of the history
+                this.moveHistory = this.moveHistory.slice(0, this.currentMoveIndex);
+                
+                // Add new move to history
+                this.moveHistory.push({
+                    fen: this.game.fen(),
+                    move: {
+                        from: source,
+                        to: target,
+                        san: move.san
+                    }
+                });
+
+                // Show return to PGN button if we deviated from PGN
+                if (this.lastPgnIndex >= 0 && this.currentMoveIndex > this.lastPgnIndex) {
+                    document.getElementById('return-pgn').style.display = 'inline-block';
+                }
+
+                // Analyze the new position
+                this.analyzePosition(this.game.fen());
+                this.updateNavigationButtons();
+            }
+
+            /**
+             * Called after a piece snap
+             * Updates the UI after a move is completed
+             */
+            onSnapEnd() {
+                this.board.position(this.game.fen());
+            }
+
+            /**
+             * Loads a specific position from move history
+             */
+            loadPosition(index) {
+                if (index >= 0 && index < this.moveHistory.length) {
+                    const position = this.moveHistory[index];
+                    
+                    // Reset game to initial position
+                    this.game = new Chess();
+                    
+                    // Replay all moves up to the desired index
+                    for (let i = 0; i <= index; i++) {
+                        const pos = this.moveHistory[i];
+                        if (pos.move) {
+                            this.game.move({
+                                from: pos.move.from,
+                                to: pos.move.to,
+                                promotion: pos.move.promotion
+                            });
+                        }
+                    }
+                    
+                    this.currentMoveIndex = index;
+                    this.board.position(this.game.fen(), true);
+                    
+                    // Update UI with stored analysis
+                    if (position.analysis) {
+                        this.updateUI(position);
+                    }
+                    
+                    this.updateNavigationButtons();
+                }
+            }
+
+            /**
+             * Navigate to previous move
+             */
+            previousMove() {
+                if (this.currentMoveIndex > 0) {
+                    this.loadPosition(this.currentMoveIndex - 1);
+                }
+            }
+
+            /**
+             * Navigate to next move
+             */
+            nextMove() {
+                if (this.currentMoveIndex < this.moveHistory.length - 1) {
+                    this.loadPosition(this.currentMoveIndex + 1);
+                } else if (this.pgnMoves.length > this.currentMoveIndex) {
+                    this.makeNextPgnMove();
+                }
+            }
+
+            /**
+             * Return to last PGN position
+             */
+            returnToPgn() {
+                if (this.lastPgnIndex >= 0) {
+                    this.loadPosition(this.lastPgnIndex);
+                    document.getElementById('return-pgn').style.display = 'none';
+                }
+            }
+
+            /**
+             * Updates navigation button states
+             */
+            updateNavigationButtons() {
+                const prevButton = document.getElementById('prev-move');
+                const nextButton = document.getElementById('next-move');
+                
+                if (prevButton && nextButton) {
+                    prevButton.disabled = this.currentMoveIndex === 0;
+                    nextButton.disabled = this.currentMoveIndex >= this.moveHistory.length - 1 && this.currentMoveIndex >= this.pgnMoves.length - 1;
+                    
+                    // Enable buttons if we have moves
+                    if (this.moveHistory.length > 1 || this.pgnMoves.length > 1) {
+                        prevButton.removeAttribute('disabled');
+                        nextButton.removeAttribute('disabled');
+                    }
+                }
+            }
+
+            /**
+             * Analyzes the current position using the backend
+             */
+            async analyzePosition(fen) {
+                try {
+                    const response = await fetch('/analyze_position', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ fen: fen })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.error) {
+                        console.error('Error:', data.error);
+                        return;
+                    }
+                    
+                    this.updateUI(data);
+                } catch (error) {
+                    console.error('Error analyzing position:', error);
+                }
+            }
+
+            /**
+             * Updates the analysis UI with position information
+             */
+            updateUI(data) {
+                // Update score
+                const score = data.analysis ? data.analysis.score : data.score;
+                document.getElementById('score').textContent = score;
+
+                // Update evaluation bar
+                const evalFill = document.getElementById('eval-fill');
+                const normalizedScore = typeof score === 'string' ? 
+                    (score.startsWith('M') ? (score.includes('-') ? 0 : 100) : 50) : 
+                    Math.max(0, Math.min(100, (score + 5) * 10));
+                evalFill.style.height = `${normalizedScore}%`;
+
+                // Update top moves list
+                const topMovesList = document.getElementById('top-moves-list');
+                const bestMoves = data.analysis ? data.analysis.best_moves : data.best_moves;
+                
+                if (bestMoves) {
+                    topMovesList.innerHTML = bestMoves.map(move => 
+                        `<li>Move: ${move}</li>`
+                    ).join('');
+                }
+            }
+
+            /**
+             * Loads game from PGN
+             */
+            async loadGameHistory(formData) {
+                try {
+                    const response = await fetch('/analyze', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    if (data.error) {
+                        console.error('Error:', data.error);
+                        return;
+                    }
+                    
+                    // Reset game state
+                    this.game = new Chess();
+                    this.moveHistory = [{
+                        fen: this.game.fen(),
+                        analysis: data[0].analysis
+                    }];
+                    this.currentMoveIndex = 0;
+                    this.pgnMoves = data;
+                    
+                    // Load initial position
+                    this.board.position('start');
+                    this.updateUI(this.moveHistory[0]);
+                    this.updateNavigationButtons();
+                    
+                    // Hide return to PGN button initially
+                    document.getElementById('return-pgn').style.display = 'none';
+                } catch (error) {
+                    console.error('Error loading game:', error);
+                }
+            }
+
+            /**
+             * Makes the next PGN move if available
+             */
+            makeNextPgnMove() {
+                if (this.currentMoveIndex < this.pgnMoves.length - 1) {
+                    const nextPos = this.pgnMoves[this.currentMoveIndex + 1];
+                    if (nextPos.move) {
+                        this.game.move({
+                            from: nextPos.move.from,
+                            to: nextPos.move.to,
+                            promotion: nextPos.move.promotion
+                        });
+                        
+                        this.currentMoveIndex++;
+                        this.lastPgnIndex = this.currentMoveIndex;
+                        this.moveHistory.push({
+                            fen: this.game.fen(),
+                            move: nextPos.move,
+                            analysis: nextPos.analysis
+                        });
+                        
+                        this.board.position(this.game.fen(), true);
+                        this.updateUI(nextPos);
+                        this.updateNavigationButtons();
+                    }
+                }
+            }
+        }
+
+        // Initialize the game when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            const chessGame = new ChessGame();
+        });
+    </script>
+</body>
+</html>

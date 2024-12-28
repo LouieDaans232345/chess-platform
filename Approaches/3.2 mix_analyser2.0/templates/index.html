@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Game Analyzer</title>
+    <link rel="stylesheet" href="/static/css/chessboard-1.0.0.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='js/chessboard-1.0.0.min.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.2/chess.min.js"></script>
+    <style>
+        #container {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            justify-content: flex-start;
+            flex-direction: row;
+        }
+
+        #board {
+            width: 400px;
+            height: 400px;
+            margin-bottom: 10px;
+            margin-left: 80px;
+        }
+
+        #infoPanel {
+            max-width: 200px;
+        }
+
+        #buttons {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px;
+        }
+
+        button:disabled {
+            background-color: #cc2626;
+            cursor: not-allowed;
+        }
+
+        #evaluation-bar {
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            width: 20px;
+            height: 300px;
+            background: #ccc;
+            border: 2px solid #000;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+
+        #evalFill {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to top, #ffffff 0%, #000000 100%);
+            border-radius: 5px;
+        }
+
+        #evaluation,
+        #topMoves {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Chess Game Analyzer</h1>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" id="pgnFile" name="pgn" accept=".pgn" />
+    </form>
+
+    <div id="container">
+        <!-- Chess board on the left -->
+        <div>
+            <div id="board"></div>
+        </div>
+
+        <!-- Info panel on the right of the chess board -->
+        <div id="infoPanel">
+            <div id="evaluation">
+                Evaluation Score: <span id="score">-</span></div>
+            <div id="evaluation-bar">
+                <div id="evalFill"></div>
+            </div>
+            <div id="topMoves">Top Moves:</div>
+            <ul id="topMovesList"></ul>
+
+            <!-- New buttons for move navigation -->
+            <div id="buttons">
+                <button id="prevMove">Previous Move</button>
+                <button id="nextMove">Next Move</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#pgnFile').on('change', function() {
+                $('#uploadForm').submit();
+            });
+
+            $('#uploadForm').on('submit', function(event) {
+                event.preventDefault();
+                var formData = new FormData(this);
+
+                $.ajax({
+                    url: '/analyze',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        console.log('Game loaded successfully', response);
+                        gameMovesInfo = response;
+                        console.log("Game moves info loaded:", gameMovesInfo); // check if moves are loaded
+                        if (gameMovesInfo.length > 0) {
+                            currentMove = 0; // Start at the initial position
+                            board.start(); // Reset board to starting position
+                            updateButtonStates(); // Enable the next move button
+                            moveHistory = gameMovesInfo;
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('Error uploading PGN:', textStatus, errorThrown);
+                    }
+                });
+            });
+        });
+
+        let currentMove = 0;
+        let gameMovesInfo = [];
+        let board;
+        let moveHistory = [];
+        let branches = [[]];
+        let currentBranch = 0;
+
+        console.log('Current Move Index:', currentMove);
+        console.log('Game Moves Info:', gameMovesInfo);
+
+        // Initialize the chessboard
+        const game = new Chess();
+        board = ChessBoard('board', {
+            position: 'start',
+            pieceTheme: '/static/img/chesspieces/wikipedia/{piece}.png',
+            draggable: true,
+            dropOffBoard: 'trash',
+            sparePieces: true,
+            onDrop: function(source, target, piece, newPos, oldPos, orientation) {
+                const move = game.move({ from: source, to: target, promotion: 'q' });
+
+                if (move === null) return 'snapback';
+
+                const fen = game.fen();
+                console.log('Free move made:', fen);
+
+                // Check if we need to create a new branch
+                if (currentMove < branches[currentBranch].length - 1) {
+                    currentBranch = branches.length;
+                    branches.push(branches[currentBranch].slice(0, currentMove + 1));
+                }
+
+                $.ajax({
+                    url: '/make_move',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ fen: fen, branch_index: currentBranch, move_index: currentMove }),
+                    success: function(moveData) {
+                        const score = moveData.Score;
+                        console.log("Score: " + score);
+                        console.log("Top Moves: ", moveData['Top Moves']);
+                        document.getElementById('score').textContent = score;
+
+                        updateEvaluationBar(score);
+
+                        const topMovesList = document.getElementById('topMovesList');
+                        topMovesList.innerHTML = ''; // clear existing top moves
+                        moveData['Top Moves'].forEach(topMove => {
+                            const li = document.createElement('li');
+                            li.textContent = `Move: ${topMove.Move}, Score: ${topMove.Score}`;
+                            topMovesList.appendChild(li);
+                        });
+
+                        branches[currentBranch].push(moveData);
+                        currentMove = branches[currentBranch].length - 1;
+                        updateButtonStates();
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('Error evaluating free move:', textStatus, errorThrown);
+                    }
+                });
+            }
+        });
+
+        // Disable buttons initially
+        document.getElementById('prevMove').disabled = true;
+        document.getElementById('nextMove').disabled = true;
+
+        // Load board and top moves for a specific move
+        function loadBoardForMove(moveIndex) {
+            console.log('Loading move index:', moveIndex);
+            if (gameMovesInfo.length > 0 && moveIndex >= 0 && moveIndex < gameMovesInfo.length) {
+                $.ajax({
+                    url: `/get_board/${moveIndex}`,
+                    type: 'GET',
+                    success: function(moveData) {
+                        board.position(moveData.FEN, false); // false to avoid resetting the board
+
+                        const score = moveData.Score;
+                        console.log("Score: " + score);
+                        console.log("Top Moves: ", moveData['Top Moves']);
+                        document.getElementById('score').textContent = score;
+
+                        updateEvaluationBar(score);
+
+                        const topMovesList = document.getElementById('topMovesList');
+                        topMovesList.innerHTML = ''; // clear existing top moves
+                        moveData['Top Moves'].forEach(topMove => {
+                            const li = document.createElement('li');
+                            li.textContent = `Move: ${topMove.Move}, Score: ${topMove.Score}`;
+                            topMovesList.appendChild(li);
+                        });
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('Error loading move data:', textStatus, errorThrown);
+                    }
+                });
+            } else {
+                console.warn('Invalid move index:', moveIndex);
+            }
+        }
+
+        // Function to update the evaluation bar
+        function updateEvaluationBar(score) {
+            let whitePercentage = 50; // default to neutral (50% white and 50% black)
+            let blackPercentage = 50; // default to neutral (50% white and 50% black)
+
+            // Check if the score contains 'M' for checkmate
+            if (typeof score === 'string' && score.includes('M')) {
+                if (score.includes('-')) {
+                    // M-1 means full black (mate for black)
+                    whitePercentage = 0;
+                    blackPercentage = 100;
+                } else {
+                    // M1 means full white (mate for white)
+                    whitePercentage = 100;
+                    blackPercentage = 0;
+                }
+            } else if (typeof score === 'number') {
+                // Map score between -15 and 15 to a percentage fill between 0 and 100
+                if (score >= 15) {
+                    whitePercentage = 100;
+                    blackPercentage = 0;
+                } else if (score <= -15) {
+                    whitePercentage = 0;
+                    blackPercentage = 100;
+                } else {
+                    // Normalize score within the range -15 to 15
+                    fillPercentage = (score + 15) / 30 * 100; // normalize to a percentage
+                    blackPercentage = 100 - whitePercentage;
+                }
+
+                // Adjust the color gradient dynamically based on the score
+                if (score > 0) {
+                    barColor = 'linear-gradient(to top, #ffffff ' + fillPercentage + '%, #000000 ' + fillPercentage + '%)';
+                } else {
+                    barColor = 'linear-gradient(to top, #ffffff ' + fillPercentage + '%, #000000 ' + fillPercentage + '%)';
+                }
+            }
+
+            // Update the evaluation bar with distinct white and black sections
+            const evalFill = document.getElementById('evalFill');
+            evalFill.style.height = '100%';  // full height of the bar
+            evalFill.style.background = `linear-gradient(to top, #ffffff ${whitePercentage}%, #000000 ${blackPercentage}%)`;
+        }
+
+        function updateBoardAndInfo(moveData) {
+            board.position(moveData.FEN, false); // Update board position
+
+            const score = moveData.Score;
+            console.log("Score: " + score);
+            console.log("Top Moves: ", moveData['Top Moves']);
+            document.getElementById('score').textContent = score;
+
+            updateEvaluationBar(score);
+
+            const topMovesList = document.getElementById('topMovesList');
+            topMovesList.innerHTML = ''; // clear existing top moves
+            moveData['Top Moves'].forEach(topMove => {
+                const li = document.createElement('li');
+                li.textContent = `Move: ${topMove.Move}, Score: ${topMove.Score}`;
+                topMovesList.appendChild(li);
+            });
+        }
+
+        function updateButtonStates() {
+            document.getElementById('prevMove').disabled = (currentMove === 0);
+            document.getElementById('nextMove').disabled = (currentMove >= branches[currentBranch].length - 1);
+        }
+
+        // Button event listeners for move navigation
+        document.getElementById('prevMove').addEventListener('click', function () {
+            if (currentMove > 0) {
+                currentMove--;
+                updateBoardAndInfo(branches[currentBranch][currentMove]);
+            }
+            updateButtonStates();
+        });
+
+        document.getElementById('nextMove').addEventListener('click', function () {
+            if (currentMove < branches[currentBranch].length - 1) {
+                currentMove++;
+                updateBoardAndInfo(branches[currentBranch][currentMove]);
+            }
+            updateButtonStates();
+        });
+    </script>
+</body>
+
+</html>

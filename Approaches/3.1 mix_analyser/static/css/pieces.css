@@ -1,0 +1,23 @@
+/* Chess piece sprites */
+.piece-sprite {
+    background-image: url('../img/chesspieces/wikipedia-sprite.png');
+    background-repeat: no-repeat;
+    width: 45px;
+    height: 45px;
+}
+
+/* White pieces */
+.white.pawn { background-position: 0 0; }
+.white.rook { background-position: -45px 0; }
+.white.knight { background-position: -90px 0; }
+.white.bishop { background-position: -135px 0; }
+.white.queen { background-position: -180px 0; }
+.white.king { background-position: -225px 0; }
+
+/* Black pieces */
+.black.pawn { background-position: 0 -45px; }
+.black.rook { background-position: -45px -45px; }
+.black.knight { background-position: -90px -45px; }
+.black.bishop { background-position: -135px -45px; }
+.black.queen { background-position: -180px -45px; }
+.black.king { background-position: -225px -45px; }
